@@ -252,8 +252,14 @@
 
         <!-- CHAT SECTION -->
         <div id="chat-section">
-            <div id="chat-box"></div>
-            <div id="input-area">
+            <div id="chat-box">
+    <div id="suggestions">
+        <p style="color:#555; font-size:13px; margin-bottom:16px; text-align:center;">Try asking Loki...</p>
+        <div id="suggestion-cards" style="display:flex; flex-wrap:wrap; gap:10px; justify-content:center;"></div>
+    </div>
+</div>
+          
+  <div id="input-area">
                 <input type="text" id="user-input" placeholder="Message Loki...">
                 <button onclick="sendMessage()">Send</button>
             </div>
@@ -330,6 +336,9 @@
         }
 
         async function sendMessage() {
+
+            const suggestions = document.getElementById('suggestions');
+            if (suggestions) suggestions.remove(); 
             const input = document.getElementById("user-input");
             const chatBox = document.getElementById("chat-box");
             const message = input.value.trim();
@@ -365,6 +374,55 @@
         document.getElementById("user-input").addEventListener("keypress", function(e) {
             if (e.key === "Enter") sendMessage();
         });
-    </script>
+    const allSuggestions = [
+    "What is the price of Bitcoin?",
+    "What is the price of Ethereum?",
+    "What is the price of Solana?",
+    "Summarize the crypto market today",
+    "Is Bitcoin bullish or bearish right now?",
+    "What is the best crypto to buy today?",
+    "Explain the 9/15 EMA strategy",
+    "What is a good risk to reward ratio?",
+    "How do I manage risk in crypto trading?",
+    "What is support and resistance?",
+    "Is now a good time to buy Ethereum?",
+    "What is market structure in trading?"
+];
+
+function loadSuggestions() {
+    const container = document.getElementById('suggestion-cards');
+    if (!container) return;
+    const shuffled = allSuggestions.sort(() => 0.5 - Math.random());
+    const selected = shuffled.slice(0, 4);
+    container.innerHTML = '';
+    selected.forEach(q => {
+        const card = document.createElement('button');
+        card.innerText = q;
+        card.style.cssText = `
+            background-color: #1a1a1a;
+            color: #ececec;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 10px 16px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: normal;
+            transition: background 0.2s;
+            max-width: 280px;
+            text-align: left;
+        `;
+        card.onmouseover = () => card.style.backgroundColor = '#222';
+        card.onmouseout = () => card.style.backgroundColor = '#1a1a1a';
+        card.onclick = () => {
+            document.getElementById('user-input').value = q;
+            sendMessage();
+        };
+        container.appendChild(card);
+    });
+}
+
+loadSuggestions();
+
+</script>
 </body>
 </html>
