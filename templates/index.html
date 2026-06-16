@@ -16,15 +16,70 @@
         }
 
         /* SIDEBAR */
-        #sidebar {
-            width: 220px;
-            background-color: #111111;
-            border-right: 1px solid #1e1e1e;
-            display: flex;
-            flex-direction: column;
-            padding: 20px 16px;
-            gap: 10px;
-        }
+       #sidebar {
+    width: 220px;
+    background-color: #111111;
+    border-right: 1px solid #1e1e1e;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 16px;
+    gap: 10px;
+}
+
+@media (max-width: 600px) {
+    body {
+        flex-direction: column;
+    }
+
+    #sidebar {
+        width: 100%;
+        flex-direction: row;
+        padding: 10px;
+        border-right: none;
+        border-bottom: 1px solid #1e1e1e;
+        gap: 8px;
+    }
+
+    #sidebar h2 {
+        display: none;
+    }
+
+    .sidebar-btn {
+        flex: 1;
+        justify-content: center;
+        font-size: 12px;
+        padding: 8px 10px;
+    }
+
+    #chat-box {
+        padding: 16px 12px;
+    }
+
+    #input-area {
+        padding: 10px 12px;
+        margin-bottom: 8px;
+    }
+
+    #chart-section {
+        padding: 20px 12px;
+    }
+
+    #chart-upload-box {
+        padding: 24px 16px;
+    }
+
+    .message {
+        max-width: 95%;
+    }
+
+    #suggestion-cards {
+        flex-direction: column;
+    }
+
+    #suggestion-cards button {
+        max-width: 100% !important;
+    }
+}
 
         #sidebar h2 {
             font-size: 18px;
