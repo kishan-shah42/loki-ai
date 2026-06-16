@@ -269,7 +269,8 @@
             </div>
 
             <input type="file" id="chart-input" accept="image/*" onchange="previewChart(event)">
-            <button id="analyze-btn" onclick="analyzeChart()">🔍 Analyze Trade</button>
+          <button id="analyze-btn" onclick="analyzeChart()">🔍 Analyze Trade</button>
+<button id="reset-btn" onclick="resetChart()" style="display:none; background-color:#1a1a1a; color:#ececec; border:1px solid #2a2a2a; margin-top:10px;">🔄 Analyze New Chart</button>
 
             <div id="chart-result"></div>
         </div>
@@ -296,7 +297,7 @@
             reader.readAsDataURL(file);
         }
 
-        async function analyzeChart() {
+      async function analyzeChart() {
             const fileInput = document.getElementById('chart-input');
             const resultBox = document.getElementById('chart-result');
 
@@ -315,6 +316,17 @@
 
             const data = await response.json();
             resultBox.innerHTML = data.reply;
+            document.getElementById('reset-btn').style.display = 'inline-block';
+        }
+
+        function resetChart() {
+            document.getElementById('preview-img').style.display = 'none';
+            document.getElementById('preview-img').src = '';
+            document.getElementById('chart-input').value = '';
+            document.getElementById('analyze-btn').style.display = 'none';
+            document.getElementById('reset-btn').style.display = 'none';
+            document.getElementById('chart-result').style.display = 'none';
+            document.getElementById('chart-result').innerHTML = '';
         }
 
         async function sendMessage() {
