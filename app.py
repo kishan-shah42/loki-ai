@@ -192,7 +192,7 @@ def analyze():
         mime_type = image_file.mimetype
 
         response = client.chat.completions.create(
-            model="meta-llama/llama-4-scout-17b-16e-instruct",
+            model="meta-llama/llama-4-maverick-17b-128e-instruct",
             messages=[
                 {
                     "role": "user",
@@ -205,7 +205,7 @@ def analyze():
                         },
                         {
                             "type": "text",
-                            "text": analysis_prompt
+                            "text": analysis_prompt + "\n\nIMPORTANT: Output ONLY the formatted analysis. No step-by-step thinking. No 'The final answer is'. No boxes. Just the clean formatted result."
                         }
                     ]
                 }
