@@ -321,7 +321,10 @@
             });
 
             const data = await response.json();
-            resultBox.innerHTML = data.reply;
+            resultBox.innerHTML = data.reply
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/## /g, '')
+    .replace(/━+/g, '<hr style="border-color:#2a2a2a; margin:8px 0;">');
             document.getElementById('reset-btn').style.display = 'inline-block';
         }
 
