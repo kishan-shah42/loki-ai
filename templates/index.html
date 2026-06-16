@@ -5,6 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Loki AI</title>
     <style>
+.mode-btn {
+    background-color: #1a1a1a;
+    color: #ececec;
+    border: 1px solid #2a2a2a;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: normal;
+    transition: background 0.2s;
+}
+
+.mode-btn:hover { background-color: #222; }
+
+.active-mode {
+    background-color: #2a2a2a !important;
+    border-color: #555 !important;
+    color: #fff !important;
+}
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
@@ -320,8 +339,31 @@
             </div>
         </div>
 
-        <!-- CHART SECTION -->
+      <!-- CHART SECTION -->
         <div id="chart-section">
+
+            <!-- MODE SELECTOR -->
+            <div id="mode-selector" style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-bottom:24px;">
+                <button class="mode-btn active-mode" onclick="selectMode('ema', this)">📉 EMA 9/15</button>
+                <button class="mode-btn" onclick="selectMode('smc', this)">🧠 SMC</button>
+                <button class="mode-btn" onclick="selectMode('sr', this)">📈 Support & Resistance</button>
+                <button class="mode-btn" onclick="selectMode('custom', this)">✏️ Custom Strategy</button>
+            </div>
+
+            <!-- CUSTOM STRATEGY BOX -->
+            <div id="custom-strategy-box" style="display:none; width:100%; max-width:600px; margin-bottom:20px;">
+                <textarea id="strategy-input" placeholder="Describe your trading strategy in simple words... e.g. I look for breakouts above resistance with high volume and RSI above 50" style="width:100%; height:120px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:14px; color:#ececec; font-size:14px; outline:none; resize:none;"></textarea>
+                <button onclick="generatePrompt()" style="margin-top:10px; background:#1a1a1a; color:#ececec; border:1px solid #555;">⚡ Generate Analysis Prompt</button>
+            </div>
+
+            <!-- GENERATED PROMPT REVIEW -->
+            <div id="prompt-review-box" style="display:none; width:100%; max-width:600px; margin-bottom:20px;">
+                <p style="color:#888; font-size:13px; margin-bottom:8px;">Loki understood your strategy as:</p>
+                <textarea id="generated-prompt" style="width:100%; height:150px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:14px; color:#ececec; font-size:13px; outline:none; resize:none;"></textarea>
+                <button onclick="approvePrompt()" style="margin-top:10px; background:#ffffff; color:#000;">✅ Looks Good, Upload Chart</button>
+            </div>
+
+            <!-- UPLOAD BOX -->
             <div id="chart-upload-box" onclick="document.getElementById('chart-input').click()">
                 <div class="icon">📈</div>
                 <h3>Upload Your Chart</h3>
@@ -330,159 +372,210 @@
             </div>
 
             <input type="file" id="chart-input" accept="image/*" onchange="previewChart(event)">
-          <button id="analyze-btn" onclick="analyzeChart()">🔍 Analyze Trade</button>
-<button id="reset-btn" onclick="resetChart()" style="display:none; background-color:#1a1a1a; color:#ececec; border:1px solid #2a2a2a; margin-top:10px;">🔄 Analyze New Chart</button>
+            <button id="analyze-btn" onclick="analyzeChart()" style="display:none;">🔍 Analyze Trade</button>
+            <button id="reset-btn" onclick="resetChart()" style="display:none; background-color:#1a1a1a; color:#ececec; border:1px solid #2a2a2a; margin-top:10px;">🔄 Analyze New Chart</button>
 
             <div id="chart-result"></div>
         </div>
-    </div>
+      </div>
+   <script>
+    let selectedMode = 'ema';
+    let approvedPrompt = '';
 
-    <script>
-        function showSection(section) {
-            document.getElementById('chat-section').style.display = section === 'chat' ? 'flex' : 'none';
-            document.getElementById('chart-section').style.display = section === 'chart' ? 'flex' : 'none';
-            document.getElementById('btn-chat').classList.toggle('active', section === 'chat');
-            document.getElementById('btn-chart').classList.toggle('active', section === 'chart');
-        }
+    function selectMode(mode, btn) {
+        selectedMode = mode;
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active-mode'));
+        btn.classList.add('active-mode');
 
-        function previewChart(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = document.getElementById('preview-img');
-                img.src = e.target.result;
-                img.style.display = 'block';
-                document.getElementById('analyze-btn').style.display = 'inline-block';
-            };
-            reader.readAsDataURL(file);
-        }
-
-      async function analyzeChart() {
-            const fileInput = document.getElementById('chart-input');
-            const resultBox = document.getElementById('chart-result');
-
-            if (!fileInput.files[0]) return;
-
-            resultBox.style.display = 'block';
-            resultBox.innerHTML = '🔍 Loki is analyzing your chart...';
-
-            const formData = new FormData();
-            formData.append('chart', fileInput.files[0]);
-
-            const response = await fetch('/analyze', {
-                method: 'POST',
-                body: formData
-            });
-
-            const data = await response.json();
-            resultBox.innerHTML = data.reply
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/## /g, '')
-    .replace(/━+/g, '<hr style="border-color:#2a2a2a; margin:8px 0;">');
-            document.getElementById('reset-btn').style.display = 'inline-block';
-        }
-
-        function resetChart() {
-            document.getElementById('preview-img').style.display = 'none';
-            document.getElementById('preview-img').src = '';
-            document.getElementById('chart-input').value = '';
+        if (mode === 'custom') {
+            document.getElementById('custom-strategy-box').style.display = 'block';
+            document.getElementById('chart-upload-box').style.display = 'none';
             document.getElementById('analyze-btn').style.display = 'none';
-            document.getElementById('reset-btn').style.display = 'none';
-            document.getElementById('chart-result').style.display = 'none';
-            document.getElementById('chart-result').innerHTML = '';
+        } else {
+            document.getElementById('custom-strategy-box').style.display = 'none';
+            document.getElementById('prompt-review-box').style.display = 'none';
+            document.getElementById('chart-upload-box').style.display = 'block';
+            approvedPrompt = '';
         }
+    }
 
-        async function sendMessage() {
+    async function generatePrompt() {
+        const strategy = document.getElementById('strategy-input').value.trim();
+        if (!strategy) return;
 
-            const suggestions = document.getElementById('suggestions');
-            if (suggestions) suggestions.remove(); 
-            const input = document.getElementById("user-input");
-            const chatBox = document.getElementById("chat-box");
-            const message = input.value.trim();
-            if (!message) return;
+        const btn = event.target;
+        btn.innerText = '⏳ Generating...';
+        btn.disabled = true;
 
-            chatBox.innerHTML += `
-                <div class="message user">
-                    <div class="label">Kishan</div>
-                    <div class="bubble">${message}</div>
-                </div>`;
-            input.value = "";
-            chatBox.scrollTop = chatBox.scrollHeight;
-
-            chatBox.innerHTML += `<div class="typing" id="typing">Loki is thinking...</div>`;
-
-            const response = await fetch("/chat", {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({message: message})
-            });
-
-            const data = await response.json();
-            document.getElementById("typing").remove();
-
-            chatBox.innerHTML += `
-                <div class="message loki">
-                    <div class="label">Loki</div>
-                    <div class="bubble">${data.reply}</div>
-                </div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-
-        document.getElementById("user-input").addEventListener("keypress", function(e) {
-            if (e.key === "Enter") sendMessage();
+        const response = await fetch('/generate-prompt', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({strategy: strategy})
         });
-    const allSuggestions = [
-    "What is the price of Bitcoin?",
-    "What is the price of Ethereum?",
-    "What is the price of Solana?",
-    "Summarize the crypto market today",
-    "Is Bitcoin bullish or bearish right now?",
-    "What is the best crypto to buy today?",
-    "Explain the 9/15 EMA strategy",
-    "What is a good risk to reward ratio?",
-    "How do I manage risk in crypto trading?",
-    "What is support and resistance?",
-    "Is now a good time to buy Ethereum?",
-    "What is market structure in trading?"
-];
 
-function loadSuggestions() {
-    const container = document.getElementById('suggestion-cards');
-    if (!container) return;
-    const shuffled = allSuggestions.sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, 4);
-    container.innerHTML = '';
-    selected.forEach(q => {
-        const card = document.createElement('button');
-        card.innerText = q;
-        card.style.cssText = `
-            background-color: #1a1a1a;
-            color: #ececec;
-            border: 1px solid #2a2a2a;
-            border-radius: 12px;
-            padding: 10px 16px;
-            font-size: 13px;
-            cursor: pointer;
-            font-weight: normal;
-            transition: background 0.2s;
-            max-width: 280px;
-            text-align: left;
-        `;
-        card.onmouseover = () => card.style.backgroundColor = '#222';
-        card.onmouseout = () => card.style.backgroundColor = '#1a1a1a';
-        card.onclick = () => {
-            document.getElementById('user-input').value = q;
-            sendMessage();
+        const data = await response.json();
+        document.getElementById('generated-prompt').value = data.prompt;
+        document.getElementById('prompt-review-box').style.display = 'block';
+
+        btn.innerText = '⚡ Generate Analysis Prompt';
+        btn.disabled = false;
+    }
+
+    function approvePrompt() {
+        approvedPrompt = document.getElementById('generated-prompt').value;
+        document.getElementById('prompt-review-box').style.display = 'none';
+        document.getElementById('chart-upload-box').style.display = 'block';
+    }
+
+    function showSection(section) {
+        document.getElementById('chat-section').style.display = section === 'chat' ? 'flex' : 'none';
+        document.getElementById('chart-section').style.display = section === 'chart' ? 'flex' : 'none';
+        document.getElementById('btn-chat').classList.toggle('active', section === 'chat');
+        document.getElementById('btn-chart').classList.toggle('active', section === 'chart');
+    }
+
+    function previewChart(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById('preview-img');
+            img.src = e.target.result;
+            img.style.display = 'block';
+            document.getElementById('analyze-btn').style.display = 'inline-block';
         };
-        container.appendChild(card);
+        reader.readAsDataURL(file);
+    }
+
+    async function analyzeChart() {
+        const fileInput = document.getElementById('chart-input');
+        const resultBox = document.getElementById('chart-result');
+
+        if (!fileInput.files[0]) return;
+
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = '🔍 Loki is analyzing your chart...';
+
+        const formData = new FormData();
+        formData.append('chart', fileInput.files[0]);
+        formData.append('mode', selectedMode);
+        if (selectedMode === 'custom' && approvedPrompt) {
+            formData.append('custom_prompt', approvedPrompt);
+        }
+
+        const response = await fetch('/analyze', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        resultBox.innerHTML = data.reply
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/## /g, '')
+            .replace(/━+/g, '<hr style="border-color:#2a2a2a; margin:8px 0;">');
+        document.getElementById('reset-btn').style.display = 'inline-block';
+    }
+
+    function resetChart() {
+        document.getElementById('preview-img').style.display = 'none';
+        document.getElementById('preview-img').src = '';
+        document.getElementById('chart-input').value = '';
+        document.getElementById('analyze-btn').style.display = 'none';
+        document.getElementById('reset-btn').style.display = 'none';
+        document.getElementById('chart-result').style.display = 'none';
+        document.getElementById('chart-result').innerHTML = '';
+    }
+
+    async function sendMessage() {
+        const input = document.getElementById("user-input");
+        const chatBox = document.getElementById("chat-box");
+        const message = input.value.trim();
+        if (!message) return;
+
+        const suggestions = document.getElementById('suggestions');
+        if (suggestions) suggestions.remove();
+
+        chatBox.innerHTML += `
+            <div class="message user">
+                <div class="label">Kishan</div>
+                <div class="bubble">${message}</div>
+            </div>`;
+        input.value = "";
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        chatBox.innerHTML += `<div class="typing" id="typing">Loki is thinking...</div>`;
+
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({message: message})
+        });
+
+        const data = await response.json();
+        document.getElementById("typing").remove();
+
+        chatBox.innerHTML += `
+            <div class="message loki">
+                <div class="label">Loki</div>
+                <div class="bubble">${data.reply}</div>
+            </div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    document.getElementById("user-input").addEventListener("keypress", function(e) {
+        if (e.key === "Enter") sendMessage();
     });
-}
 
-window.onload = function() {
-    loadSuggestions();
-}
+    const allSuggestions = [
+        "What is the price of Bitcoin?",
+        "What is the price of Ethereum?",
+        "What is the price of Solana?",
+        "Summarize the crypto market today",
+        "Is Bitcoin bullish or bearish right now?",
+        "What is the best crypto to buy today?",
+        "Explain the 9/15 EMA strategy",
+        "What is a good risk to reward ratio?",
+        "How do I manage risk in crypto trading?",
+        "What is support and resistance?",
+        "Is now a good time to buy Ethereum?",
+        "What is market structure in trading?"
+    ];
 
+    function loadSuggestions() {
+        const container = document.getElementById('suggestion-cards');
+        if (!container) return;
+        const shuffled = allSuggestions.sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, 4);
+        container.innerHTML = '';
+        selected.forEach(q => {
+            const card = document.createElement('button');
+            card.innerText = q;
+            card.style.cssText = `
+                background-color: #1a1a1a;
+                color: #ececec;
+                border: 1px solid #2a2a2a;
+                border-radius: 12px;
+                padding: 10px 16px;
+                font-size: 13px;
+                cursor: pointer;
+                font-weight: normal;
+                transition: background 0.2s;
+                max-width: 280px;
+                text-align: left;
+            `;
+            card.onmouseover = () => card.style.backgroundColor = '#222';
+            card.onmouseout = () => card.style.backgroundColor = '#1a1a1a';
+            card.onclick = () => {
+                document.getElementById('user-input').value = q;
+                sendMessage();
+            };
+            container.appendChild(card);
+        });
+    }
+
+    window.onload = function() {
+        loadSuggestions();
+    }
 </script>
 </body>
 </html>

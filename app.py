@@ -11,37 +11,99 @@ messages = [
     {"role": "system", "content": "You are Loki, a crypto expert assistant. You have access to real live crypto prices through a live data feed. When live data is provided to you in the format [Live Data: ...], you MUST use that exact price in your response. Never use your training data for prices. Always quote the exact price from the live data provided."}
 ]
 
-TRADE_ANALYSIS_PROMPT = """You are an expert crypto trading analyst. Analyze this chart using the following strategy:
+EMA_PROMPT = """You are an expert crypto trading analyst. Analyze this chart using the 9/15 EMA strategy:
 
 STRATEGY RULES:
 1. EMA 9 and EMA 15 - Check if candles are touching and using them as support (uptrend) or resistance (downtrend)
-2. Trend + Market Structure - Identify if market is making higher highs/higher lows (uptrend) or lower highs/lower lows (downtrend)
+2. Trend + Market Structure - Identify higher highs/higher lows (uptrend) or lower highs/lower lows (downtrend)
 3. Volume - Check if volume confirms the move
 4. RSI + Bollinger Bands - Use as secondary confirmation only
-5. Angle - Look for minimum 30 degree inclination (uptrend) or declination (downtrend)
+5. Angle - Look for minimum 30 degree inclination or declination
 
 PROVIDE YOUR ANALYSIS IN THIS FORMAT:
-📊 TRADE REVIEW
+📊 TRADE REVIEW — EMA 9/15 STRATEGY
 ━━━━━━━━━━━━━━━
 📈 Trend: [Bullish/Bearish/Sideways]
 🏗️ Market Structure: [Higher Highs & Higher Lows / Lower Highs & Lower Lows]
-📉 EMA 9/15: [Candle touching EMA as support? Yes/No]
+📉 EMA 9/15: [Candle touching EMA as support/resistance? Yes/No]
 📐 Angle: [Meets 30 degree requirement? Yes/No]
 📦 Volume: [Confirms move? Yes/No]
 🔍 RSI/Bollinger: [Secondary confirmation]
 
 ⚡ TRADE SETUP
 ━━━━━━━━━━━━━━━
-Entry Zone: [price level or description]
-Stop Loss: [below/above which level]
-Take Profit: [target level]
+Entry Zone: [level]
+Stop Loss: [level]
+Take Profit: [level]
 Risk-Reward: [ratio]
 
 🎯 SCORE: [X/10]
-
 ✅ RECOMMENDATION: [Take Trade / Wait / Avoid]
+💬 REASONING: [2-3 sentences]"""
 
-💬 REASONING: [2-3 sentences explaining the decision]"""
+SMC_PROMPT = """You are an expert crypto trading analyst specializing in Smart Money Concepts (SMC). Analyze this chart:
+
+STRATEGY RULES:
+1. Market Structure - Identify Break of Structure (BOS) and Change of Character (CHOCH)
+2. Order Blocks - Identify bullish or bearish order blocks
+3. Fair Value Gaps (FVG) - Identify any unfilled gaps
+4. Liquidity - Identify liquidity pools above highs or below lows
+5. Premium/Discount zones - Is price in premium or discount?
+
+PROVIDE YOUR ANALYSIS IN THIS FORMAT:
+📊 TRADE REVIEW — SMC STRATEGY
+━━━━━━━━━━━━━━━
+📈 Market Structure: [BOS/CHOCH — Bullish or Bearish]
+🏦 Order Block: [Identified? Location?]
+⚡ Fair Value Gap: [Present? Yes/No — Location]
+💧 Liquidity: [Where is liquidity resting?]
+📍 Zone: [Premium / Discount / Equilibrium]
+
+⚡ TRADE SETUP
+━━━━━━━━━━━━━━━
+Entry Zone: [level]
+Stop Loss: [level]
+Take Profit: [level]
+Risk-Reward: [ratio]
+
+🎯 SCORE: [X/10]
+✅ RECOMMENDATION: [Take Trade / Wait / Avoid]
+💬 REASONING: [2-3 sentences]"""
+
+SR_PROMPT = """You are an expert crypto trading analyst specializing in Support and Resistance trading. Analyze this chart:
+
+STRATEGY RULES:
+1. Key Support Levels - Identify strong support zones where price bounced before
+2. Key Resistance Levels - Identify strong resistance zones where price rejected before
+3. Trend - Overall trend direction
+4. Breakout or Rejection - Is price breaking out or rejecting from a key level?
+5. Volume - Does volume confirm the move?
+
+PROVIDE YOUR ANALYSIS IN THIS FORMAT:
+📊 TRADE REVIEW — SUPPORT & RESISTANCE STRATEGY
+━━━━━━━━━━━━━━━
+📈 Trend: [Bullish/Bearish/Sideways]
+🟢 Key Support: [level]
+🔴 Key Resistance: [level]
+💥 Breakout/Rejection: [Breaking out / Rejecting / Consolidating]
+📦 Volume: [Confirms move? Yes/No]
+
+⚡ TRADE SETUP
+━━━━━━━━━━━━━━━
+Entry Zone: [level]
+Stop Loss: [level]
+Take Profit: [level]
+Risk-Reward: [ratio]
+
+🎯 SCORE: [X/10]
+✅ RECOMMENDATION: [Take Trade / Wait / Avoid]
+💬 REASONING: [2-3 sentences]"""
+
+PROMPTS = {
+    "ema": EMA_PROMPT,
+    "smc": SMC_PROMPT,
+    "sr": SR_PROMPT
+}
 
 def get_crypto_price(coin):
     try:
@@ -115,10 +177,20 @@ def chat():
 def analyze():
     try:
         image_file = request.files.get("chart")
+        mode = request.form.get("mode", "ema")
+        custom_prompt = request.form.get("custom_prompt", "")
+
         if not image_file:
             return jsonify({"reply": "No chart image received."})
+
+        if mode == "custom" and custom_prompt:
+            analysis_prompt = custom_prompt
+        else:
+            analysis_prompt = PROMPTS.get(mode, EMA_PROMPT)
+
         image_data = base64.b64encode(image_file.read()).decode("utf-8")
         mime_type = image_file.mimetype
+
         response = client.chat.completions.create(
             model="meta-llama/llama-4-scout-17b-16e-instruct",
             messages=[
@@ -133,7 +205,7 @@ def analyze():
                         },
                         {
                             "type": "text",
-                            "text": TRADE_ANALYSIS_PROMPT
+                            "text": analysis_prompt
                         }
                     ]
                 }
@@ -144,5 +216,26 @@ def analyze():
     except Exception as e:
         return jsonify({"reply": f"Analysis failed: {str(e)}"})
 
+@app.route("/generate-prompt", methods=["POST"])
+def generate_prompt():
+    try:
+        strategy = request.json.get("strategy")
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are an expert trading analyst. Convert the user's trading strategy description into a detailed chart analysis prompt. The prompt should tell an AI exactly what to look for in a chart and how to format the analysis with entry, stop loss, take profit, risk-reward ratio, a score out of 10, and a recommendation."
+                },
+                {
+                    "role": "user",
+                    "content": f"Convert this trading strategy into a chart analysis prompt: {strategy}"
+                }
+            ]
+        )
+        generated = response.choices[0].message.content
+        return jsonify({"prompt": generated})
+    except Exception as e:
+        return jsonify({"prompt": f"Error: {str(e)}"})
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
