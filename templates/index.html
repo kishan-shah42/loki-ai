@@ -421,7 +421,9 @@ function loadSuggestions() {
     });
 }
 
-loadSuggestions();
+window.onload = function() {
+    loadSuggestions();
+}
 
 </script>
 </body>
