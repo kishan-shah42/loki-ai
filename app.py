@@ -225,7 +225,28 @@ def generate_prompt():
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert trading analyst. Convert the user's trading strategy description into a detailed chart analysis prompt. The prompt should tell an AI exactly what to look for in a chart and how to format the analysis with entry, stop loss, take profit, risk-reward ratio, a score out of 10, and a recommendation."
+                    "content": """You are an expert trading analyst. Convert the user's trading strategy into a chart analysis prompt.
+
+The prompt you generate MUST instruct the AI to:
+1. Analyze the chart directly without explaining steps
+2. Output ONLY in this clean format:
+
+📊 TRADE REVIEW — [Strategy Name]
+━━━━━━━━━━━━━━━
+[Key analysis points based on the strategy]
+
+⚡ TRADE SETUP
+━━━━━━━━━━━━━━━
+Entry Zone: [level]
+Stop Loss: [level]
+Take Profit: [level]
+Risk-Reward: [ratio]
+
+🎯 SCORE: [X/10]
+✅ RECOMMENDATION: [Take Trade / Wait / Avoid]
+💬 REASONING: [2-3 sentences maximum]
+
+The prompt must strictly say: Do not show your thinking process. Do not number your steps. Output only the formatted result above."""
                 },
                 {
                     "role": "user",
