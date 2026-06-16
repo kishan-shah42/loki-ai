@@ -6,14 +6,59 @@
     <title>Loki AI</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+
         body {
             background-color: #0d0d0d;
             color: #ececec;
             font-family: 'Segoe UI', sans-serif;
             display: flex;
-            flex-direction: column;
             height: 100vh;
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: 220px;
+            background-color: #111111;
+            border-right: 1px solid #1e1e1e;
+            display: flex;
+            flex-direction: column;
+            padding: 20px 16px;
+            gap: 10px;
+        }
+
+        #sidebar h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+
+        .sidebar-btn {
+            background-color: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #ececec;
+            font-size: 14px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-btn:hover { background-color: #222; }
+        .sidebar-btn.active { background-color: #2a2a2a; border-color: #444; }
+
+        .sidebar-btn span { font-size: 18px; }
+
+        /* MAIN */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
         }
 
         #header {
@@ -24,6 +69,22 @@
             color: #fff;
             text-align: center;
             letter-spacing: 1px;
+        }
+
+        /* CHAT SECTION */
+        #chat-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #chart-section {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
         }
 
         #chat-box {
@@ -38,12 +99,7 @@
             margin: 0 auto;
         }
 
-        .message {
-            display: flex;
-            flex-direction: column;
-            max-width: 80%;
-        }
-
+        .message { display: flex; flex-direction: column; max-width: 80%; }
         .message.user { align-self: flex-end; align-items: flex-end; }
         .message.loki { align-self: flex-start; align-items: flex-start; }
 
@@ -60,6 +116,7 @@
             border-radius: 16px;
             font-size: 15px;
             line-height: 1.6;
+            white-space: pre-wrap;
         }
 
         .message.user .bubble {
@@ -94,11 +151,9 @@
             color: #ececec;
             font-size: 15px;
             outline: none;
-            transition: border 0.2s;
         }
 
         #user-input:focus { border-color: #555; }
-
         #user-input::placeholder { color: #555; }
 
         button {
@@ -121,22 +176,147 @@
             padding-left: 4px;
         }
 
+        /* CHART ANALYSIS */
+        #chart-upload-box {
+            background-color: #1a1a1a;
+            border: 2px dashed #2a2a2a;
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            width: 100%;
+            max-width: 600px;
+            cursor: pointer;
+            transition: border 0.2s;
+        }
+
+        #chart-upload-box:hover { border-color: #555; }
+
+        #chart-upload-box p {
+            color: #555;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+
+        #chart-upload-box .icon { font-size: 48px; }
+
+        #chart-result {
+            margin-top: 30px;
+            background-color: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 24px;
+            width: 100%;
+            max-width: 600px;
+            font-size: 15px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            display: none;
+        }
+
+        #chart-input { display: none; }
+
+        #analyze-btn {
+            margin-top: 16px;
+            display: none;
+        }
+
+        #preview-img {
+            margin-top: 16px;
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 10px;
+            display: none;
+        }
+
         #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-track { background: transparent; }
         #chat-box::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <div id="header">⚡ Loki AI</div>
 
-    <div id="chat-box" id="chat-box"></div>
+    <!-- SIDEBAR -->
+    <div id="sidebar">
+        <h2>⚡ Loki AI</h2>
+        <button class="sidebar-btn active" id="btn-chat" onclick="showSection('chat')">
+            <span>💬</span> Chat
+        </button>
+        <button class="sidebar-btn" id="btn-chart" onclick="showSection('chart')">
+            <span>📊</span> Chart Analysis
+        </button>
+    </div>
 
-    <div id="input-area">
-        <input type="text" id="user-input" placeholder="Message Loki...">
-        <button onclick="sendMessage()">Send</button>
+    <!-- MAIN -->
+    <div id="main">
+        <div id="header">⚡ Loki AI</div>
+
+        <!-- CHAT SECTION -->
+        <div id="chat-section">
+            <div id="chat-box"></div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="Message Loki...">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+
+        <!-- CHART SECTION -->
+        <div id="chart-section">
+            <div id="chart-upload-box" onclick="document.getElementById('chart-input').click()">
+                <div class="icon">📈</div>
+                <h3>Upload Your Chart</h3>
+                <p>Click to upload a chart screenshot for AI trade analysis</p>
+                <img id="preview-img" src="" alt="preview">
+            </div>
+
+            <input type="file" id="chart-input" accept="image/*" onchange="previewChart(event)">
+            <button id="analyze-btn" onclick="analyzeChart()">🔍 Analyze Trade</button>
+
+            <div id="chart-result"></div>
+        </div>
     </div>
 
     <script>
+        function showSection(section) {
+            document.getElementById('chat-section').style.display = section === 'chat' ? 'flex' : 'none';
+            document.getElementById('chart-section').style.display = section === 'chart' ? 'flex' : 'none';
+            document.getElementById('btn-chat').classList.toggle('active', section === 'chat');
+            document.getElementById('btn-chart').classList.toggle('active', section === 'chart');
+        }
+
+        function previewChart(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = document.getElementById('preview-img');
+                img.src = e.target.result;
+                img.style.display = 'block';
+                document.getElementById('analyze-btn').style.display = 'inline-block';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        async function analyzeChart() {
+            const fileInput = document.getElementById('chart-input');
+            const resultBox = document.getElementById('chart-result');
+
+            if (!fileInput.files[0]) return;
+
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = '🔍 Loki is analyzing your chart...';
+
+            const formData = new FormData();
+            formData.append('chart', fileInput.files[0]);
+
+            const response = await fetch('/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            resultBox.innerHTML = data.reply;
+        }
+
         async function sendMessage() {
             const input = document.getElementById("user-input");
             const chatBox = document.getElementById("chat-box");
@@ -152,7 +332,6 @@
             chatBox.scrollTop = chatBox.scrollHeight;
 
             chatBox.innerHTML += `<div class="typing" id="typing">Loki is thinking...</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
 
             const response = await fetch("/chat", {
                 method: "POST",
@@ -161,7 +340,6 @@
             });
 
             const data = await response.json();
-
             document.getElementById("typing").remove();
 
             chatBox.innerHTML += `
