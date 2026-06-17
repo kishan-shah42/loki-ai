@@ -315,8 +315,11 @@
         <button class="sidebar-btn active" id="btn-chat" onclick="showSection('chat')">
             <span>💬</span> Chat
         </button>
-        <button class="sidebar-btn" id="btn-chart" onclick="showSection('chart')">
+      <button class="sidebar-btn" id="btn-chart" onclick="showSection('chart')">
             <span>📊</span> Chart Analysis
+        </button>
+        <button class="sidebar-btn" id="btn-risk" onclick="showSection('risk')">
+            <span>📊</span> Risk Analysis
         </button>
     </div>
 
@@ -377,7 +380,70 @@
 
             <div id="chart-result"></div>
         </div>
-      </div>
+
+        <!-- RISK ANALYSIS SECTION -->
+         <div id="risk-section" style="display:none; flex:1; flex-direction:column; align-items:center; justify-content:flex-start; padding:30px 20px; overflow-y:auto;">
+            
+            <h2 style="color:#fff; margin-bottom:24px; font-size:20px;">📊 Risk Analysis</h2>
+
+            <div style="width:100%; max-width:600px; display:flex; flex-direction:column; gap:14px;">
+                
+                <!-- Direction -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Trade Direction</label>
+                    <div style="display:flex; gap:10px; margin-top:8px;">
+                        <button id="btn-long" onclick="setDirection('long')" style="flex:1; background:#1a1a1a; color:#ececec; border:1px solid #555;">📈 Long</button>
+                        <button id="btn-short" onclick="setDirection('short')" style="flex:1; background:#1a1a1a; color:#ececec; border:1px solid #2a2a2a;">📉 Short</button>
+                    </div>
+                </div>
+
+                <!-- Entry Price -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Entry Price *</label>
+                    <input type="number" id="entry-price" placeholder="e.g. 66000" style="width:100%; margin-top:6px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:12px 16px; color:#ececec; font-size:15px; outline:none;">
+                </div>
+
+                <!-- Current Price -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Current Price *</label>
+                    <input type="number" id="current-price" placeholder="e.g. 67000" style="width:100%; margin-top:6px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:12px 16px; color:#ececec; font-size:15px; outline:none;">
+                </div>
+
+                <!-- Stop Loss -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Stop Loss *</label>
+                    <input type="number" id="stop-loss" placeholder="e.g. 65000" style="width:100%; margin-top:6px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:12px 16px; color:#ececec; font-size:15px; outline:none;">
+                </div>
+
+                <!-- Take Profit -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Take Profit *</label>
+                    <input type="number" id="take-profit" placeholder="e.g. 69000" style="width:100%; margin-top:6px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:12px 16px; color:#ececec; font-size:15px; outline:none;">
+                </div>
+
+                <!-- Capital (Optional) -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Total Capital (Optional)</label>
+                    <input type="number" id="capital" placeholder="e.g. 10000" style="width:100%; margin-top:6px; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:12px 16px; color:#ececec; font-size:15px; outline:none;">
+                </div>
+
+                <!-- Chart Upload (Optional) -->
+                <div>
+                    <label style="color:#888; font-size:13px;">Chart Screenshot (Optional)</label>
+                    <div id="risk-upload-box" onclick="document.getElementById('risk-chart-input').click()" style="margin-top:6px; background:#1a1a1a; border:2px dashed #2a2a2a; border-radius:12px; padding:20px; text-align:center; cursor:pointer;">
+                        <p style="color:#555; font-size:13px;">📎 Click to upload chart</p>
+                        <img id="risk-preview-img" src="" style="display:none; max-width:100%; max-height:200px; border-radius:8px; margin-top:10px;">
+                    </div>
+                    <input type="file" id="risk-chart-input" accept="image/*" style="display:none;" onchange="previewRiskChart(event)">
+                </div>
+
+                <button onclick="analyzeRisk()" style="margin-top:10px;">⚡ Analyze My Trade</button>
+
+                <div id="risk-result" style="display:none; background:#1a1a1a; border:1px solid #2a2a2a; border-radius:16px; padding:24px; font-size:15px; line-height:1.8; white-space:pre-wrap; margin-top:10px;"></div>
+
+            </div>
+        </div>
+
    <script>
     let selectedMode = 'ema';
     let approvedPrompt = '';
@@ -427,11 +493,13 @@
         document.getElementById('chart-upload-box').style.display = 'block';
     }
 
-    function showSection(section) {
+ function showSection(section) {
         document.getElementById('chat-section').style.display = section === 'chat' ? 'flex' : 'none';
         document.getElementById('chart-section').style.display = section === 'chart' ? 'flex' : 'none';
+        document.getElementById('risk-section').style.display = section === 'risk' ? 'flex' : 'none';
         document.getElementById('btn-chat').classList.toggle('active', section === 'chat');
         document.getElementById('btn-chart').classList.toggle('active', section === 'chart');
+        document.getElementById('btn-risk').classList.toggle('active', section === 'risk');
     }
 
     function previewChart(event) {
@@ -571,7 +639,65 @@
             };
             container.appendChild(card);
         });
+   }
+     let tradeDirection = 'long';
+
+    function setDirection(dir) {
+        tradeDirection = dir;
+        document.getElementById('btn-long').style.borderColor = dir === 'long' ? '#555' : '#2a2a2a';
+        document.getElementById('btn-short').style.borderColor = dir === 'short' ? '#555' : '#2a2a2a';
     }
+
+    function previewRiskChart(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById('risk-preview-img');
+            img.src = e.target.result;
+            img.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function analyzeRisk() {
+        const entry = document.getElementById('entry-price').value;
+        const current = document.getElementById('current-price').value;
+        const stopLoss = document.getElementById('stop-loss').value;
+        const takeProfit = document.getElementById('take-profit').value;
+        const capital = document.getElementById('capital').value;
+        const chartFile = document.getElementById('risk-chart-input').files[0];
+        const resultBox = document.getElementById('risk-result');
+
+        if (!entry || !current || !stopLoss || !takeProfit) {
+            alert('Please fill in all required fields.');
+            return;
+        }
+
+        resultBox.style.display = 'block';
+        resultBox.innerHTML = '⚡ Risk Sentinel is analyzing your trade...';
+
+        const formData = new FormData();
+        formData.append('direction', tradeDirection);
+        formData.append('entry', entry);
+        formData.append('current', current);
+        formData.append('stop_loss', stopLoss);
+        formData.append('take_profit', takeProfit);
+        if (capital) formData.append('capital', capital);
+        if (chartFile) formData.append('chart', chartFile);
+
+        const response = await fetch('/risk-analysis', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await response.json();
+        resultBox.innerHTML = data.reply
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/## /g, '')
+            .replace(/━+/g, '<hr style="border-color:#2a2a2a; margin:8px 0;">');
+    }
+   
 
     window.onload = function() {
         loadSuggestions();

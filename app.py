@@ -173,6 +173,121 @@ def chat():
         messages = [messages[0]] + messages[-19:]
     return jsonify({"reply": reply})
 
+@app.route("/risk-analysis", methods=["POST"])
+def risk_analysis():
+    try:
+        direction = request.form.get("direction")
+        entry = float(request.form.get("entry"))
+        current = float(request.form.get("current"))
+        stop_loss = float(request.form.get("stop_loss"))
+        take_profit = float(request.form.get("take_profit"))
+        capital = request.form.get("capital")
+        image_file = request.files.get("chart")
+
+        # Calculate key metrics
+        if direction == "long":
+            pnl = current - entry
+            risk = entry - stop_loss
+            reward = take_profit - entry
+            remaining_reward = take_profit - current
+            remaining_risk = current - stop_loss
+        else:
+            pnl = entry - current
+            risk = stop_loss - entry
+            reward = entry - take_profit
+            remaining_reward = current - take_profit
+            remaining_risk = stop_loss - current
+
+        pnl_pct = (pnl / entry) * 100
+        rr_ratio = round(reward / risk, 2) if risk != 0 else 0
+        remaining_rr = round(remaining_reward / remaining_risk, 2) if remaining_risk != 0 else 0
+
+        capital_text = ""
+        if capital:
+            capital = float(capital)
+            risk_amount = (risk / entry) * capital
+            risk_pct = (risk_amount / capital) * 100
+            capital_text = f"Capital at Risk: ${risk_amount:,.2f} ({round(risk_pct, 2)}%)"
+
+        status = "In Profit ✅" if pnl > 0 else "In Loss ❌" if pnl < 0 else "Breakeven ⚖️"
+
+        data_summary = f"""
+TRADE DATA:
+Direction: {direction.upper()}
+Entry Price: {entry}
+Current Price: {current}
+Stop Loss: {stop_loss}
+Take Profit: {take_profit}
+Current P&L: {round(pnl, 2)} ({round(pnl_pct, 2)}%)
+Status: {status}
+Original Risk/Reward: 1:{rr_ratio}
+Remaining Risk/Reward: 1:{remaining_rr}
+{capital_text}
+"""
+
+        prompt = f"""You are a professional risk manager using Van Tharp position management rules and Turtle Trading principles.
+
+Analyze this trade and give a clear recommendation:
+
+{data_summary}
+
+RULES TO APPLY:
+1. Never risk more than 2% of capital per trade
+2. Move stop loss to breakeven once trade is 1R in profit
+3. Cut losers fast if risk/reward has deteriorated
+4. Let winners run if trend is still valid
+5. Never average down on a losing trade
+
+OUTPUT ONLY IN THIS FORMAT:
+📊 RISK ANALYSIS REPORT
+━━━━━━━━━━━━━━━
+📍 Position Status: {status}
+💰 Current P&L: {round(pnl, 2)} ({round(pnl_pct, 2)}%)
+⚖️ Original Risk/Reward: 1:{rr_ratio}
+📉 Remaining Risk/Reward: 1:{remaining_rr}
+{f"⚠️ {capital_text}" if capital_text else ""}
+
+🎯 RECOMMENDATION
+━━━━━━━━━━━━━━━
+Action: [Hold / Exit Now / Move Stop to Breakeven / Take Partial Profit]
+Stop Loss Advice: [What to do with stop loss]
+💬 Reasoning: [2-3 sentences based on the rules above]
+
+Do not show thinking. Output only the formatted result above."""
+
+        if image_file:
+            image_data = base64.b64encode(image_file.read()).decode("utf-8")
+            mime_type = image_file.mimetype
+            response = client.chat.completions.create(
+                model="meta-llama/llama-4-scout-17b-16e-instruct",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "image_url",
+                                "image_url": {"url": f"data:{mime_type};base64,{image_data}"}
+                            },
+                            {"type": "text", "text": prompt + "\n\nAlso analyze the chart image to confirm if the trade is still visually valid based on current price action."}
+                        ]
+                    }
+                ]
+            )
+        else:
+            response = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {"role": "system", "content": "You are a professional risk manager."},
+                    {"role": "user", "content": prompt}
+                ]
+            )
+
+        reply = response.choices[0].message.content
+        return jsonify({"reply": reply})
+
+    except Exception as e:
+        return jsonify({"reply": f"Analysis failed: {str(e)}"})
+
 @app.route("/analyze", methods=["POST"])
 def analyze():
     try:
