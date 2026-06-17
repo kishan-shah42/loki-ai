@@ -7,9 +7,10 @@ import base64
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-messages = [
-    {"role": "system", "content": "You are Loki, a crypto expert assistant. You have access to real live crypto prices through a live data feed. When live data is provided to you in the format [Live Data: ...], you MUST use that exact price in your response. Never use your training data for prices. Always quote the exact price from the live data provided."}
+  messages = [
+    {"role": "system", "content": "You are Loki, a crypto trading assistant. Be concise, clear, and direct. Keep responses short and simple — 2 to 4 sentences max unless detailed explanation is needed. No dramatic language. No motivational speech. Talk like a knowledgeable friend, not a poet. When live data is provided in [Live Data: ...] format, always use that exact price. Never use training data for prices."}
 ]
+
 
 EMA_PROMPT = """You are an expert crypto trading analyst. Analyze this chart using the 9/15 EMA strategy:
 
