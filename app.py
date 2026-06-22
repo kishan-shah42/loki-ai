@@ -4,13 +4,19 @@ import os
 import requests
 import base64
 import hashlib
-from datetime import date
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from datetime import date, datetime, timedelta
 
 from supabase import create_client
 supabase = create_client(os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY"))
 
 app = Flask(__name__)
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+
+GMAIL_ADDRESS = os.environ.get("GMAIL_ADDRESS")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD")
 
 messages = [
     {"role": "system", "content": "You are Loki, a crypto trading assistant. Be concise, clear, and direct. Keep responses short and simple — 2 to 4 sentences max unless detailed explanation is needed. No dramatic language. No motivational speech. Talk like a knowledgeable friend, not a poet. When live data is provided in [Live Data: ...] format, always use that exact price. Never use training data for prices."}
@@ -157,6 +163,32 @@ def detect_crypto(message):
 
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
+
+def send_reset_email(to_email, reset_link):
+    try:
+        body = f"""Hi,
+
+We received a request to reset your Loki AI password.
+
+Click the link below to set a new password. This link expires in 1 hour:
+{reset_link}
+
+If you didn't request this, you can safely ignore this email — your password will stay the same.
+
+— Loki AI"""
+
+        msg = MIMEText(body)
+        msg["Subject"] = "Reset your Loki AI password"
+        msg["From"] = GMAIL_ADDRESS
+        msg["To"] = to_email
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_ADDRESS, GMAIL_APP_PASSWORD)
+            server.sendmail(GMAIL_ADDRESS, to_email, msg.as_string())
+        return True
+    except Exception as e:
+        print(f"Failed to send reset email: {e}")
+        return False
 
 @app.route("/")
 def home():
@@ -474,6 +506,77 @@ def request_pro():
         supabase.table("users").update({
             "pro_requested": True
         }).eq("email", email).execute()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route("/forgot-password", methods=["POST"])
+def forgot_password():
+    try:
+        email = request.json.get("email")
+        if not email:
+            return jsonify({"error": "Email required"})
+
+        result = supabase.table("users").select("*").eq("email", email).execute()
+
+        # Don't reveal whether the email exists or not — just say "success" either way.
+        # This is a normal security practice so people can't use this to check
+        # which emails have accounts.
+        if not result.data:
+            return jsonify({"success": True})
+
+        token = secrets.token_urlsafe(32)
+        expiry = (datetime.utcnow() + timedelta(hours=1)).isoformat()
+
+        supabase.table("users").update({
+            "reset_token": token,
+            "reset_token_expiry": expiry
+        }).eq("email", email).execute()
+
+        reset_link = f"{request.host_url}reset-password?token={token}"
+        send_reset_email(email, reset_link)
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
+@app.route("/reset-password", methods=["GET"])
+def reset_password_page():
+    token = request.args.get("token", "")
+    return render_template("reset_password.html", token=token)
+
+@app.route("/reset-password", methods=["POST"])
+def reset_password_submit():
+    try:
+        token = request.json.get("token")
+        new_password = request.json.get("new_password")
+
+        if not token or not new_password:
+            return jsonify({"error": "Missing token or password"})
+
+        if len(new_password) < 6:
+            return jsonify({"error": "Password must be at least 6 characters"})
+
+        result = supabase.table("users").select("*").eq("reset_token", token).execute()
+        if not result.data:
+            return jsonify({"error": "This reset link is invalid or has already been used."})
+
+        user = result.data[0]
+
+        expiry_dt = datetime.fromisoformat(user["reset_token_expiry"])
+        if expiry_dt.tzinfo is not None:
+            expiry_dt = expiry_dt.replace(tzinfo=None)
+
+        if datetime.utcnow() > expiry_dt:
+            return jsonify({"error": "This reset link has expired. Please request a new one."})
+
+        new_hash = hash_password(new_password)
+        supabase.table("users").update({
+            "password_hash": new_hash,
+            "reset_token": None,
+            "reset_token_expiry": None
+        }).eq("email", user["email"]).execute()
 
         return jsonify({"success": True})
     except Exception as e:
