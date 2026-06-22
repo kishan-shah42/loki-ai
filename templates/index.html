@@ -471,6 +471,37 @@
         </div>
     </div>
 
+    <!-- UPGRADE TO PRO MODAL -->
+    <div id="upgrade-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.88); z-index:1001; align-items:center; justify-content:center; padding:20px;">
+        <div style="background-color:#111111; border:1px solid #2a2a2a; border-radius:16px; padding:32px; width:100%; max-width:420px; position:relative;">
+            <button onclick="hideUpgradeModal()" style="position:absolute; top:14px; right:14px; background:transparent; color:#888; border:none; padding:4px 8px; font-size:18px; font-weight:normal;">✕</button>
+
+            <h2 style="color:#fff; text-align:center; margin-bottom:6px; font-size:22px;">⚡ Upgrade to Pro</h2>
+            <p style="color:#666; text-align:center; font-size:13px; margin-bottom:24px;">Unlimited chart & risk analyses, no daily limit.</p>
+
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button id="plan-monthly" class="mode-btn active-mode" onclick="selectPlan('monthly', this)" style="flex:1; text-align:center; line-height:1.6;">
+                    $5<br><span style="font-size:11px; color:#888;">per month</span>
+                </button>
+                <button id="plan-6month" class="mode-btn" onclick="selectPlan('6month', this)" style="flex:1; text-align:center; line-height:1.6;">
+                    $15<br><span style="font-size:11px; color:#888;">for 6 months</span>
+                </button>
+            </div>
+
+            <div style="background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; padding:16px; margin-bottom:20px; font-size:13px; color:#aaa; line-height:1.7;">
+                1. Tap "Pay on WhatsApp" — it opens a message with your plan and account email already filled in.<br>
+                2. Send your payment there.<br>
+                3. Tap "I've Sent It" so we know to upgrade you.<br>
+                We'll activate your Pro account within 24 hours.
+            </div>
+
+            <button onclick="payOnWhatsapp()" style="width:100%; margin-bottom:10px; background-color:#25D366; color:#000;">💬 Pay on WhatsApp</button>
+            <button id="notify-paid-btn" onclick="notifyPaid()" style="width:100%; background-color:#1a1a1a; color:#ececec; border:1px solid #2a2a2a;">✅ I've Sent It</button>
+
+            <div id="upgrade-status" style="display:none; margin-top:14px; text-align:center; font-size:13px; color:#4ade80;"></div>
+        </div>
+    </div>
+
     <!-- SIDEBAR -->
     <div id="sidebar">
         <h2>⚡ Loki AI</h2>
@@ -481,6 +512,7 @@
                 <span id="user-badge">FREE</span>
             </div>
             <div id="user-usage"></div>
+            <button id="upgrade-btn" onclick="showUpgradeModal()" style="display:none; background-color:#1a1a1a; color:#ececec; border:1px solid #555; padding:7px; font-size:11px; font-weight:600;">⚡ Upgrade to Pro</button>
             <button id="logout-btn" onclick="logout()">Log Out</button>
         </div>
 
@@ -665,14 +697,70 @@
         document.getElementById('user-bar').style.display = 'flex';
         document.getElementById('user-email').innerText = currentUser.email;
         const badge = document.getElementById('user-badge');
+        const upgradeBtn = document.getElementById('upgrade-btn');
         if (currentUser.is_pro) {
             badge.innerText = 'PRO';
             document.getElementById('user-usage').innerText = 'Unlimited analyses';
+            upgradeBtn.style.display = 'none';
         } else {
             badge.innerText = 'FREE';
             document.getElementById('user-usage').innerText = (currentUser.analyses_today || 0) + '/3 analyses used today';
+            upgradeBtn.style.display = 'block';
         }
     }
+
+    // ===================== UPGRADE TO PRO =====================
+    let selectedPlan = 'monthly';
+    const WHATSAPP_NUMBER = '9779803430016';
+
+    function showUpgradeModal() {
+        document.getElementById('upgrade-overlay').style.display = 'flex';
+    }
+
+    function hideUpgradeModal() {
+        document.getElementById('upgrade-overlay').style.display = 'none';
+    }
+
+    function selectPlan(plan, btn) {
+        selectedPlan = plan;
+        document.getElementById('plan-monthly').classList.remove('active-mode');
+        document.getElementById('plan-6month').classList.remove('active-mode');
+        btn.classList.add('active-mode');
+    }
+
+    function payOnWhatsapp() {
+        const planText = selectedPlan === 'monthly' ? '$5 / 1 month' : '$15 / 6 months';
+        const email = currentUser ? currentUser.email : '(not logged in)';
+        const message = `Hi! I'd like to upgrade to Loki AI Pro.\nPlan: ${planText}\nMy account email: ${email}`;
+        const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`;
+        window.open(url, '_blank');
+    }
+
+    async function notifyPaid() {
+        if (!currentUser) {
+            showAuthOverlay();
+            return;
+        }
+        const btn = document.getElementById('notify-paid-btn');
+        btn.disabled = true;
+        btn.innerText = 'Notifying...';
+
+        try {
+            await fetch('/request-pro', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: currentUser.email, plan: selectedPlan})
+            });
+            const status = document.getElementById('upgrade-status');
+            status.style.display = 'block';
+            status.innerText = "✅ Got it! We'll upgrade your account within 24 hours.";
+            btn.innerText = '✅ Sent';
+        } catch (err) {
+            btn.disabled = false;
+            btn.innerText = "✅ I've Sent It";
+        }
+    }
+    // ===================== END UPGRADE TO PRO =====================
 
     async function submitAuth() {
         const email = document.getElementById('auth-email').value.trim();
@@ -842,7 +930,7 @@
         const allowed = await checkLimitOrBlock();
         if (!allowed) {
             resultBox.style.display = 'block';
-            resultBox.innerHTML = "🚫 You've used your 3 free analyses today. Upgrade to Pro for unlimited access, or come back tomorrow.";
+            resultBox.innerHTML = "🚫 You've used your 3 free analyses today.\n\nUpgrade to Pro for unlimited access, or come back tomorrow."; const upgradeLink = document.createElement('button'); upgradeLink.innerText = '⚡ Upgrade to Pro'; upgradeLink.style.cssText = 'margin-top:14px; width:100%;'; upgradeLink.onclick = showUpgradeModal; resultBox.appendChild(upgradeLink);
             return;
         }
 
@@ -1002,7 +1090,7 @@
         const allowed = await checkLimitOrBlock();
         if (!allowed) {
             resultBox.style.display = 'block';
-            resultBox.innerHTML = "🚫 You've used your 3 free analyses today. Upgrade to Pro for unlimited access, or come back tomorrow.";
+            resultBox.innerHTML = "🚫 You've used your 3 free analyses today.\n\nUpgrade to Pro for unlimited access, or come back tomorrow."; const upgradeLink = document.createElement('button'); upgradeLink.innerText = '⚡ Upgrade to Pro'; upgradeLink.style.cssText = 'margin-top:14px; width:100%;'; upgradeLink.onclick = showUpgradeModal; resultBox.appendChild(upgradeLink);
             return;
         }
 

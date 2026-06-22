@@ -464,5 +464,20 @@ def check_limit():
     except Exception as e:
         return jsonify({"error": str(e)})
 
+@app.route("/request-pro", methods=["POST"])
+def request_pro():
+    try:
+        email = request.json.get("email")
+        if not email:
+            return jsonify({"error": "Email required"})
+
+        supabase.table("users").update({
+            "pro_requested": True
+        }).eq("email", email).execute()
+
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)})
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
