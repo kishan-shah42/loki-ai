@@ -3,6 +3,8 @@ from groq import Groq
 import os
 import requests
 import base64
+import hashlib
+from datetime import date
 
 from supabase import create_client
 supabase = create_client(os.environ.get("SUPABASE_URL"), os.environ.get("SUPABASE_KEY"))
@@ -152,6 +154,9 @@ def detect_crypto(message):
         if keyword in message_lower:
             return coin_id
     return None
+
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
 
 @app.route("/")
 def home():
@@ -377,11 +382,6 @@ The prompt must strictly say: Do not show your thinking process. Do not number y
         return jsonify({"prompt": generated})
     except Exception as e:
         return jsonify({"prompt": f"Error: {str(e)}"})
-if __name__ == "__main__":
-import hashlib
-
-def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
 
 @app.route("/signup", methods=["POST"])
 def signup():
@@ -389,20 +389,20 @@ def signup():
         data = request.json
         email = data.get("email")
         password = data.get("password")
-        
+
         if not email or not password:
             return jsonify({"error": "Email and password required"})
-        
+
         existing = supabase.table("users").select("*").eq("email", email).execute()
         if existing.data:
             return jsonify({"error": "Email already exists"})
-        
+
         password_hash = hash_password(password)
         supabase.table("users").insert({
             "email": email,
             "password_hash": password_hash
         }).execute()
-        
+
         return jsonify({"success": True, "email": email})
     except Exception as e:
         return jsonify({"error": str(e)})
@@ -413,13 +413,13 @@ def login():
         data = request.json
         email = data.get("email")
         password = data.get("password")
-        
+
         password_hash = hash_password(password)
         result = supabase.table("users").select("*").eq("email", email).eq("password_hash", password_hash).execute()
-        
+
         if not result.data:
             return jsonify({"error": "Invalid email or password"})
-        
+
         user = result.data[0]
         return jsonify({
             "success": True,
@@ -435,33 +435,34 @@ def check_limit():
     try:
         email = request.json.get("email")
         result = supabase.table("users").select("*").eq("email", email).execute()
-        
+
         if not result.data:
             return jsonify({"error": "User not found"})
-        
+
         user = result.data[0]
-        
-        from datetime import date
+
         today = str(date.today())
-        
+
         if user["last_reset"] != today:
             supabase.table("users").update({
                 "analyses_today": 0,
                 "last_reset": today
             }).eq("email", email).execute()
             user["analyses_today"] = 0
-        
+
         if user["is_pro"]:
             return jsonify({"allowed": True, "is_pro": True})
-        
+
         if user["analyses_today"] >= 3:
             return jsonify({"allowed": False, "analyses_today": user["analyses_today"]})
-        
+
         supabase.table("users").update({
             "analyses_today": user["analyses_today"] + 1
         }).eq("email", email).execute()
-        
+
         return jsonify({"allowed": True, "analyses_today": user["analyses_today"] + 1})
     except Exception as e:
         return jsonify({"error": str(e)})
+
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
