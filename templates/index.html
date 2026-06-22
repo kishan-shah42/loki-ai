@@ -57,10 +57,16 @@
         border-right: none;
         border-bottom: 1px solid #1e1e1e;
         gap: 8px;
+        flex-wrap: wrap;
     }
 
     #sidebar h2 {
         display: none;
+    }
+
+    #user-bar {
+        width: 100%;
+        order: -1;
     }
 
     .sidebar-btn {
@@ -305,13 +311,179 @@
         #chat-box::-webkit-scrollbar { width: 4px; }
         #chat-box::-webkit-scrollbar-track { background: transparent; }
         #chat-box::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 4px; }
+
+        /* AUTH OVERLAY */
+        #auth-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.88);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        #auth-card {
+            background-color: #111111;
+            border: 1px solid #2a2a2a;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 380px;
+        }
+
+        #auth-card h2 {
+            color: #fff;
+            text-align: center;
+            margin-bottom: 6px;
+            font-size: 22px;
+        }
+
+        #auth-card p.subtitle {
+            color: #666;
+            text-align: center;
+            font-size: 13px;
+            margin-bottom: 24px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .auth-tab-btn {
+            flex: 1;
+            background-color: #1a1a1a;
+            color: #ececec;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 10px;
+            font-size: 13px;
+            cursor: pointer;
+            font-weight: normal;
+            transition: background 0.2s;
+        }
+
+        .auth-input {
+            width: 100%;
+            margin-bottom: 12px;
+            background-color: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: #ececec;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .auth-input:focus { border-color: #555; }
+        .auth-input::placeholder { color: #555; }
+
+        #auth-error {
+            display: none;
+            color: #ff6b6b;
+            font-size: 13px;
+            margin-bottom: 14px;
+            text-align: center;
+        }
+
+        #auth-submit-btn { width: 100%; margin-top: 4px; }
+
+        /* USER BAR (sidebar) */
+        #user-bar {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            padding: 10px;
+            background-color: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 10px;
+            margin-bottom: 4px;
+        }
+
+        #user-bar-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+        }
+
+        #user-email {
+            font-size: 12px;
+            color: #ececec;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 130px;
+        }
+
+        #user-badge {
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 6px;
+            background-color: #2a2a2a;
+            color: #aaa;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        #user-usage {
+            font-size: 11px;
+            color: #666;
+        }
+
+        #logout-btn {
+            background-color: transparent;
+            color: #888;
+            border: 1px solid #2a2a2a;
+            padding: 6px;
+            font-size: 11px;
+            font-weight: normal;
+        }
+
+        #logout-btn:hover { background-color: #1a1a1a; color: #ececec; }
     </style>
 </head>
 <body>
 
+    <!-- AUTH OVERLAY -->
+    <div id="auth-overlay">
+        <div id="auth-card">
+            <h2>⚡ Loki AI</h2>
+            <p class="subtitle">Sign in to continue</p>
+
+            <div class="auth-tabs">
+                <button id="tab-login" class="auth-tab-btn active-mode" onclick="switchAuthTab('login')">Log In</button>
+                <button id="tab-signup" class="auth-tab-btn" onclick="switchAuthTab('signup')">Sign Up</button>
+            </div>
+
+            <div id="auth-error"></div>
+
+            <input type="email" id="auth-email" class="auth-input" placeholder="Email">
+            <input type="password" id="auth-password" class="auth-input" placeholder="Password">
+
+            <button id="auth-submit-btn" onclick="submitAuth()">Log In</button>
+        </div>
+    </div>
+
     <!-- SIDEBAR -->
     <div id="sidebar">
         <h2>⚡ Loki AI</h2>
+
+        <div id="user-bar">
+            <div id="user-bar-top">
+                <span id="user-email"></span>
+                <span id="user-badge">FREE</span>
+            </div>
+            <div id="user-usage"></div>
+            <button id="logout-btn" onclick="logout()">Log Out</button>
+        </div>
+
         <button class="sidebar-btn active" id="btn-chat" onclick="showSection('chat')">
             <span>💬</span> Chat
         </button>
@@ -443,8 +615,154 @@
 
             </div>
         </div>
+    </div>
 
    <script>
+    // ===================== AUTH =====================
+    let currentUser = null;
+    let authMode = 'login';
+
+    function loadUser() {
+        const stored = localStorage.getItem('loki_user');
+        return stored ? JSON.parse(stored) : null;
+    }
+
+    function saveUser(user) {
+        localStorage.setItem('loki_user', JSON.stringify(user));
+        currentUser = user;
+    }
+
+    function logout() {
+        localStorage.removeItem('loki_user');
+        currentUser = null;
+        location.reload();
+    }
+
+    function showAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'flex';
+    }
+
+    function hideAuthOverlay() {
+        document.getElementById('auth-overlay').style.display = 'none';
+    }
+
+    function switchAuthTab(mode) {
+        authMode = mode;
+        document.getElementById('tab-login').classList.toggle('active-mode', mode === 'login');
+        document.getElementById('tab-signup').classList.toggle('active-mode', mode === 'signup');
+        document.getElementById('auth-submit-btn').innerText = mode === 'login' ? 'Log In' : 'Sign Up';
+        document.getElementById('auth-error').style.display = 'none';
+    }
+
+    function showAuthError(msg) {
+        const el = document.getElementById('auth-error');
+        el.innerText = msg;
+        el.style.display = 'block';
+    }
+
+    function updateUserBar() {
+        if (!currentUser) return;
+        document.getElementById('user-bar').style.display = 'flex';
+        document.getElementById('user-email').innerText = currentUser.email;
+        const badge = document.getElementById('user-badge');
+        if (currentUser.is_pro) {
+            badge.innerText = 'PRO';
+            document.getElementById('user-usage').innerText = 'Unlimited analyses';
+        } else {
+            badge.innerText = 'FREE';
+            document.getElementById('user-usage').innerText = (currentUser.analyses_today || 0) + '/3 analyses used today';
+        }
+    }
+
+    async function submitAuth() {
+        const email = document.getElementById('auth-email').value.trim();
+        const password = document.getElementById('auth-password').value;
+
+        if (!email || !password) {
+            showAuthError('Please enter both email and password.');
+            return;
+        }
+
+        const btn = document.getElementById('auth-submit-btn');
+        btn.disabled = true;
+        btn.innerText = authMode === 'login' ? 'Logging in...' : 'Signing up...';
+
+        try {
+            if (authMode === 'signup') {
+                const signupRes = await fetch('/signup', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({email: email, password: password})
+                });
+                const signupData = await signupRes.json();
+                if (signupData.error) {
+                    showAuthError(signupData.error);
+                    btn.disabled = false;
+                    btn.innerText = 'Sign Up';
+                    return;
+                }
+            }
+
+            const loginRes = await fetch('/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email, password: password})
+            });
+            const loginData = await loginRes.json();
+
+            if (loginData.error) {
+                showAuthError(loginData.error);
+                btn.disabled = false;
+                btn.innerText = authMode === 'login' ? 'Log In' : 'Sign Up';
+                return;
+            }
+
+            saveUser(loginData);
+            updateUserBar();
+            hideAuthOverlay();
+
+        } catch (err) {
+            showAuthError('Something went wrong. Please try again.');
+            btn.disabled = false;
+            btn.innerText = authMode === 'login' ? 'Log In' : 'Sign Up';
+        }
+    }
+
+    document.getElementById('auth-password').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') submitAuth();
+    });
+
+    async function checkLimitOrBlock() {
+        if (!currentUser) {
+            showAuthOverlay();
+            return false;
+        }
+        try {
+            const response = await fetch('/check-limit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: currentUser.email})
+            });
+            const data = await response.json();
+
+            if (data.error) {
+                // If the limit check itself fails, don't block the user from using the app
+                return true;
+            }
+
+            currentUser.analyses_today = data.analyses_today !== undefined ? data.analyses_today : currentUser.analyses_today;
+            if (data.is_pro) currentUser.is_pro = true;
+            saveUser(currentUser);
+            updateUserBar();
+
+            return data.allowed;
+
+        } catch (err) {
+            return true;
+        }
+    }
+    // ===================== END AUTH =====================
+
     let selectedMode = 'ema';
     let approvedPrompt = '';
 
@@ -520,6 +838,13 @@
         const resultBox = document.getElementById('chart-result');
 
         if (!fileInput.files[0]) return;
+
+        const allowed = await checkLimitOrBlock();
+        if (!allowed) {
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = "🚫 You've used your 3 free analyses today. Upgrade to Pro for unlimited access, or come back tomorrow.";
+            return;
+        }
 
         resultBox.style.display = 'block';
         resultBox.innerHTML = '🔍 Loki is analyzing your chart...';
@@ -674,6 +999,13 @@
             return;
         }
 
+        const allowed = await checkLimitOrBlock();
+        if (!allowed) {
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = "🚫 You've used your 3 free analyses today. Upgrade to Pro for unlimited access, or come back tomorrow.";
+            return;
+        }
+
         resultBox.style.display = 'block';
         resultBox.innerHTML = '⚡ Risk Sentinel is analyzing your trade...';
 
@@ -701,6 +1033,13 @@
 
     window.onload = function() {
         loadSuggestions();
+        currentUser = loadUser();
+        if (currentUser) {
+            hideAuthOverlay();
+            updateUserBar();
+        } else {
+            showAuthOverlay();
+        }
     }
 </script>
 </body>
