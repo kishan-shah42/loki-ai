@@ -463,11 +463,16 @@
             </div>
 
             <div id="auth-error"></div>
+            <div id="forgot-status" style="display:none; color:#4ade80; font-size:13px; margin-bottom:14px; text-align:center;"></div>
 
             <input type="email" id="auth-email" class="auth-input" placeholder="Email">
             <input type="password" id="auth-password" class="auth-input" placeholder="Password">
 
+            <p id="forgot-link" style="text-align:center; font-size:12px; color:#888; margin-top:-6px; margin-bottom:16px; cursor:pointer; text-decoration:underline;" onclick="showForgotMode()">Forgot password?</p>
+
             <button id="auth-submit-btn" onclick="submitAuth()">Log In</button>
+            <button id="forgot-submit-btn" style="width:100%; display:none;" onclick="submitForgotPassword()">Send Reset Link</button>
+            <p id="back-to-login-link" style="display:none; text-align:center; font-size:12px; color:#888; margin-top:14px; cursor:pointer; text-decoration:underline;" onclick="showLoginMode()">Back to Log In</p>
         </div>
     </div>
 
@@ -819,6 +824,58 @@
     document.getElementById('auth-password').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') submitAuth();
     });
+
+    // ===================== FORGOT PASSWORD =====================
+    function showForgotMode() {
+        document.getElementById('auth-password').style.display = 'none';
+        document.getElementById('forgot-link').style.display = 'none';
+        document.getElementById('auth-submit-btn').style.display = 'none';
+        document.querySelector('.auth-tabs').style.display = 'none';
+        document.getElementById('forgot-submit-btn').style.display = 'block';
+        document.getElementById('back-to-login-link').style.display = 'block';
+        document.getElementById('auth-error').style.display = 'none';
+        document.getElementById('forgot-status').style.display = 'none';
+    }
+
+    function showLoginMode() {
+        document.getElementById('auth-password').style.display = 'block';
+        document.getElementById('forgot-link').style.display = 'block';
+        document.getElementById('auth-submit-btn').style.display = 'block';
+        document.querySelector('.auth-tabs').style.display = 'flex';
+        document.getElementById('forgot-submit-btn').style.display = 'none';
+        document.getElementById('back-to-login-link').style.display = 'none';
+        document.getElementById('forgot-status').style.display = 'none';
+        document.getElementById('forgot-submit-btn').disabled = false;
+        document.getElementById('forgot-submit-btn').innerText = 'Send Reset Link';
+    }
+
+    async function submitForgotPassword() {
+        const email = document.getElementById('auth-email').value.trim();
+        if (!email) {
+            showAuthError('Please enter your email above first.');
+            return;
+        }
+
+        const btn = document.getElementById('forgot-submit-btn');
+        btn.disabled = true;
+        btn.innerText = 'Sending...';
+
+        try {
+            await fetch('/forgot-password', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email})
+            });
+            const status = document.getElementById('forgot-status');
+            status.style.display = 'block';
+            status.innerText = "If that email has an account, we've sent a reset link to it. Check your inbox.";
+            btn.innerText = 'Sent';
+        } catch (err) {
+            btn.disabled = false;
+            btn.innerText = 'Send Reset Link';
+        }
+    }
+    // ===================== END FORGOT PASSWORD =====================
 
     async function checkLimitOrBlock() {
         if (!currentUser) {
